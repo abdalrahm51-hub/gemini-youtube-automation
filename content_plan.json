@@ -2,143 +2,143 @@
   "lessons": [
     {
       "chapter": 21,
-      "part": "Advanced LLM Development",
-      "title": "Prompt Engineering Mastery: Guiding Your LLM Like a Pro",
+      "part": 1,
+      "title": "Generative AI Beyond Text: An Introduction to GANs & Diffusion Models",
       "status": "complete",
-      "youtube_id": "OFRUsvJ_IRA"
+      "youtube_id": "UQMq8rGyzwI"
     },
     {
       "chapter": 22,
-      "part": "Advanced LLM Development",
-      "title": "Retrieval-Augmented Generation (RAG): Giving LLMs Superpowers with External Knowledge",
-      "status": "complete",
-      "youtube_id": "niVOH0V0NAs"
+      "part": 1,
+      "title": "Generative Adversarial Networks (GANs): The Art Forgers of AI",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 23,
-      "part": "Data Management for AI",
-      "title": "Vector Databases Unveiled: The Memory Banks for Smart AI",
-      "status": "complete",
-      "youtube_id": "2LEU29Q6ELM"
+      "part": 1,
+      "title": "Diffusion Models Demystified: Creating Images from Noise",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 24,
-      "part": "Agentic AI Frameworks",
-      "title": "Building AI with LangGraph: Orchestrating Complex Agent Workflows",
-      "status": "complete",
-      "youtube_id": "ZeZtA0RKf9E"
+      "part": 1,
+      "title": "Text-to-Image Generation: Prompting for Visuals",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 25,
-      "part": "Advanced LLM Development",
-      "title": "Fine-tuning LLMs: Teaching an AI New Tricks for Specific Tasks",
-      "status": "complete",
-      "youtube_id": "IEdWEpEU1Ok"
+      "part": 1,
+      "title": "Building a Simple Image Generation App: From Concept to Code",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 26,
-      "part": "AI Domains: Computer Vision",
-      "title": "Computer Vision Fundamentals: Teaching AI to See the World",
-      "status": "complete",
-      "youtube_id": "LJTpHKHVgq8"
+      "part": 1,
+      "title": "Building Smarter Agents: Planning and Reasoning",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 27,
-      "part": "AI Domains: Computer Vision",
-      "title": "Object Detection and Image Recognition: What's in That Picture?",
-      "status": "complete",
-      "youtube_id": "b0_erudffTk"
+      "part": 1,
+      "title": "Tool Use for LLMs: Giving Your AI Hands and Eyes (Practical API Integration)",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 28,
-      "part": "AI Domains: Natural Language Processing",
-      "title": "Introduction to Natural Language Processing (NLP): Beyond LLMs",
-      "status": "complete",
-      "youtube_id": "VwTI8-k4AgQ"
+      "part": 1,
+      "title": "Memory for Agents: Beyond Vector Databases",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 29,
-      "part": "AI Domains: Natural Language Processing",
-      "title": "Sentiment Analysis & Topic Modeling: What's the Mood, What's the Gist?",
-      "status": "complete",
-      "youtube_id": "4gfZid1qBh0"
+      "part": 1,
+      "title": "Multi-Agent Systems: AI Teams Working Together",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 30,
-      "part": "Advanced Machine Learning Concepts",
-      "title": "Transfer Learning: Borrowing Brains for Faster AI Development",
-      "status": "complete",
-      "youtube_id": "Cjh_HyL6uVk"
+      "part": 1,
+      "title": "Designing Autonomous Agents: The Future of AI Action",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 31,
-      "part": "Advanced Machine Learning Concepts",
-      "title": "Few-Shot and Zero-Shot Learning: When Data is Scarce",
-      "status": "complete",
-      "youtube_id": "MOQhR3E229I"
+      "part": 1,
+      "title": "MLOps Fundamentals: Bringing AI Models to Life (Deployment & Versioning)",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 32,
-      "part": "Unsupervised Learning",
-      "title": "Unsupervised Learning: Finding Hidden Patterns in Data",
-      "status": "complete",
-      "youtube_id": "VDm_NYRfM-I"
+      "part": 1,
+      "title": "Monitoring and Maintaining AI Models: Keeping Your AI Healthy",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 33,
-      "part": "Unsupervised Learning",
-      "title": "Clustering Algorithms: Grouping Similar Things Together",
-      "status": "complete",
-      "youtube_id": "-UxLuMLThxk"
+      "part": 1,
+      "title": "Scalable AI Architectures: Designing for Growth",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 34,
-      "part": "Unsupervised Learning",
-      "title": "Anomaly Detection: Spotting the Odd One Out",
-      "status": "complete",
-      "youtube_id": "w7KZ3fkpdOg"
+      "part": 1,
+      "title": "Cloud AI Services: Leveraging AWS, GCP, Azure for AI",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 35,
-      "part": "AI Deployment & Optimization",
-      "title": "Edge AI: Bringing Intelligence to Your Devices",
-      "status": "complete",
-      "youtube_id": "GjNSc341eGA"
+      "part": 1,
+      "title": "Optimizing AI Costs: Smart Spending for Smart Models",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 36,
-      "part": "AI Security & Ethics",
-      "title": "AI Security: Protecting Your Models from Attacks",
-      "status": "complete",
-      "youtube_id": "IPwQaCpmfCk"
+      "part": 1,
+      "title": "Ethical AI: Building Fair and Responsible Systems",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 37,
-      "part": "Advanced Reinforcement Learning",
-      "title": "Advanced Reinforcement Learning: Deep Q-Learning and Policy Gradients",
-      "status": "complete",
-      "youtube_id": "ABkyiZiezrU"
+      "part": 1,
+      "title": "AI Bias: Unmasking Hidden Prejudices in Your Models",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 38,
-      "part": "Deep Dive: Transformers & LLMs",
-      "title": "Transformers Internals: Deconstructing the Self-Attention Mechanism",
-      "status": "complete",
-      "youtube_id": "d87wMknlBto"
+      "part": 1,
+      "title": "Explainable AI (XAI): Understanding Why Your AI Does What It Does",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 39,
-      "part": "AI Deployment & Optimization",
-      "title": "Model Compression and Quantization: Making AI Lean and Fast",
-      "status": "complete",
-      "youtube_id": "LlBRo2ELY8k"
+      "part": 1,
+      "title": "Probabilistic AI: Dealing with Uncertainty",
+      "status": "pending",
+      "youtube_id": null
     },
     {
       "chapter": 40,
-      "part": "AI Project Lifecycle",
-      "title": "Building a Real-World AI Project: From Idea to Deployment (Capstone Overview)",
-      "status": "complete",
-      "youtube_id": "xX10_-IsJBM"
+      "part": 1,
+      "title": "The Future of AI: Emerging Trends and What's Next for Developers",
+      "status": "pending",
+      "youtube_id": null
     }
   ]
 }
