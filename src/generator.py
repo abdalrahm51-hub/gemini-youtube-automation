@@ -27,25 +27,8 @@ if os.name == 'posix':
 
 def get_pexels_image(query, video_type):
     """Searches for a relevant image on Pexels and returns the image object."""
-    pexels_api_key = os.getenv("PEXELS_API_KEY")
-    if not pexels_api_key:
-        print("⚠️ PEXELS_API_KEY not found. Using solid color background.")
-        return None
-
-    orientation = 'landscape' if video_type == 'long' else 'portrait'
-    try:
-        headers = {"Authorization": pexels_api_key}
-        params = {"query": f"mysterious {query}", "per_page": 1, "orientation": orientation}
-        response = requests.get("https://api.pexels.com/v1/search", headers=headers, params=params, timeout=15)
-        response.raise_for_status()
-        data = response.json()
-        if data.get('photos'):
-            image_url = data['photos'][0]['src']['large2x']
-            image_response = requests.get(image_url, timeout=15)
-            image_response.raise_for_status()
-            return Image.open(BytesIO(image_response.content)).convert("RGBA")
-    except Exception as e:
-        print(f"❌ Error fetching Pexels image: {e}")
+    # تم التعديل هنا: استخدام الخلفية الافتراضية السريعة والمستقرة لتجنب تعليق السيرفر مع النصوص العربية
+    print("🎨 Using fast background generation to avoid system hanging.")
     return None
 
 
@@ -88,7 +71,6 @@ def generate_curriculum(previous_titles=None):
         Respond with ONLY a valid JSON object. The object must contain a key "lessons" which is a list of 10 lesson objects.
         Each lesson object must have these keys: "chapter", "part", "title", "status" (defaulted to "pending"), and "youtube_id" (defaulted to null).
         """
-        # FIX: Using gemini-1.5-flash as the model name
         response = client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
         json_string = response.text.strip().replace("```json", "").replace("```", "")
         curriculum = json.loads(json_string)
@@ -115,7 +97,6 @@ def generate_lesson_content(lesson_title):
 
         Return ONLY valid JSON.
         """
-        # FIX: Using gemini-1.5-flash as the model name
         response = client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
         json_string = response.text.strip().replace("```json", "").replace("```", "")
         content = json.loads(json_string)
@@ -188,7 +169,8 @@ def create_video(slide_paths, audio_paths, output_path, video_type):
                 bg_music = bg_music.subclip(0, final_video.duration)
             final_video = final_video.set_audio(CompositeAudioClip([final_video.audio.volumex(1.2), bg_music]))
 
-        final_video.write_videofile(str(output_path), fps=24, codec="libx264", audio_codec="aac")
+        # تم التعديل هنا: إضافة preset='ultrafast' لتسريع معالجة الفيديو ومنع توقف الأكشنز
+        final_video.write_videofile(str(output_path), fps=24, codec="libx264", audio_codec="aac", preset='ultrafast')
         print(f"✅ Video created successfully!")
 
     except Exception as e:
