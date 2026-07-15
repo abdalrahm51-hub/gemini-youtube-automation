@@ -71,7 +71,8 @@ def generate_curriculum(previous_titles=None):
         Respond with ONLY a valid JSON object. The object must contain a key "lessons" which is a list of 10 lesson objects.
         Each lesson object must have these keys: "chapter", "part", "title", "status" (defaulted to "pending"), and "youtube_id" (defaulted to null).
         """
-        response = client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
+        # تعديل النموذج هنا إلى الإصدار الأكثر توافقاً مع واجهات v1beta المجانية
+        response = client.models.generate_content(model='gemini-1.5-flash-8b', contents=prompt)
         json_string = response.text.strip().replace("```json", "").replace("```", "")
         curriculum = json.loads(json_string)
         print("✅ New curriculum generated successfully!")
@@ -97,7 +98,8 @@ def generate_lesson_content(lesson_title):
 
         Return ONLY valid JSON.
         """
-        response = client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
+        # تعديل النموذج هنا إلى الإصدار الأكثر توافقاً مع واجهات v1beta المجانية
+        response = client.models.generate_content(model='gemini-1.5-flash-8b', contents=prompt)
         json_string = response.text.strip().replace("```json", "").replace("```", "")
         content = json.loads(json_string)
         print("✅ Lesson content generated successfully.")
@@ -265,3 +267,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
