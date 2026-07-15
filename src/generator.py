@@ -1,5 +1,5 @@
 # FILE: src/generator.py
-# FINAL, CLEAN VERSION: Compatible with per-slide audio sync, dynamic slides, and GitHub Actions.
+# FINAL, COMPLETE & CLEAN VERSION: Compatible with per-slide audio sync, dynamic slides, and GitHub Actions.
 
 import os
 import json
@@ -27,7 +27,7 @@ if os.name == 'posix':
 
 def get_pexels_image(query, video_type):
     """Searches for a relevant image on Pexels and returns the image object."""
-    # تم التعديل هنا: استخدام الخلفية الافتراضية السريعة والمستقرة لتجنب تعليق السيرفر مع النصوص العربية
+    # لتجنب التعليق مع النصوص العربية وبطء السيرفر، نعتمد على الخلفية السينمائية الافتراضية الجاهزة فورياً
     print("🎨 Using fast background generation to avoid system hanging.")
     return None
 
@@ -169,10 +169,99 @@ def create_video(slide_paths, audio_paths, output_path, video_type):
                 bg_music = bg_music.subclip(0, final_video.duration)
             final_video = final_video.set_audio(CompositeAudioClip([final_video.audio.volumex(1.2), bg_music]))
 
-        # تم التعديل هنا: إضافة preset='ultrafast' لتسريع معالجة الفيديو ومنع توقف الأكشنز
+        # استخدام الإعداد ultrafast يضمن الرندرة الفورية وبدون تعليق على خوادم GitHub المجانية
         final_video.write_videofile(str(output_path), fps=24, codec="libx264", audio_codec="aac", preset='ultrafast')
         print(f"✅ Video created successfully!")
 
     except Exception as e:
         print(f"❌ ERROR during video creation: {e}")
         raise
+
+
+# ==========================================
+# --- DO NOT DELETE: main Execution Loop ---
+# ==========================================
+def main():
+    print("🚀 Starting Autonomous AI Course Generator pipeline...")
+    output_dir = Path("output")
+    output_dir.mkdir(exist_ok=True, parents=True)
+
+    # 1. Load or Generate Curriculum
+    curriculum_path = Path("curriculum.json")
+    curriculum = None
+    if curriculum_path.exists():
+        try:
+            with open(curriculum_path, "r", encoding="utf-8") as f:
+                curriculum = json.load(f)
+            print("📂 Loaded existing curriculum.")
+        except Exception as e:
+            print(f"⚠️ Failed to load curriculum: {e}. Generating new one...")
+    
+    if not curriculum:
+        curriculum = generate_curriculum()
+        with open(curriculum_path, "w", encoding="utf-8") as f:
+            json.dump(curriculum, f, ensure_ascii=False, indent=4)
+
+    # Find the next pending lesson
+    lessons = curriculum.get("lessons", [])
+    next_lesson = None
+    for lesson in lessons:
+        if lesson.get("status") == "pending":
+            next_lesson = lesson
+            break
+
+    if not next_lesson:
+        print("🎉 All lessons are already completed!")
+        return
+
+    print(f"🎬 Starting production for Lesson: '{next_lesson['title']}'")
+    
+    try:
+        # 2. Generate Content
+        content = generate_lesson_content(next_lesson["title"])
+        
+        # 3. Setup Folders
+        lesson_id = f"chapter_{next_lesson['chapter']}_part_{next_lesson['part']}"
+        lesson_dir = output_dir / lesson_id
+        lesson_dir.mkdir(exist_ok=True, parents=True)
+
+        # 4. Process Slides & Audio
+        slides = content.get("long_form_slides", [])
+        slide_paths = []
+        audio_paths = []
+
+        print(f"📸 Generating {len(slides)} slides and audio clips...")
+        for i, slide in enumerate(slides):
+            print(f"--- Processing Slide {i+1}/{len(slides)} ---")
+            img_path = generate_visuals(
+                output_dir=lesson_dir,
+                video_type="long",
+                slide_content=slide,
+                slide_number=i+1,
+                total_slides=len(slides)
+            )
+            slide_paths.append(img_path)
+
+            audio_file = lesson_dir / f"audio_{i+1:02d}.mp3"
+            wav_path = text_to_speech(slide.get("content", ""), audio_file)
+            audio_paths.append(wav_path)
+
+        # 5. Compile Final Video
+        video_output_path = lesson_dir / f"{lesson_id}_video.mp4"
+        create_video(slide_paths, audio_paths, video_output_path, video_type="long")
+
+        # Update Status and Save
+        next_lesson["status"] = "completed"
+        with open(curriculum_path, "w", encoding="utf-8") as f:
+            json.dump(curriculum, f, ensure_ascii=False, indent=4)
+        print(f"✅ Successfully finished production for: '{next_lesson['title']}'!")
+
+    except Exception as e:
+        print(f"❌ Failed producing lesson: {next_lesson['title']}. Error: {e}")
+        with open(curriculum_path, "w", encoding="utf-8") as f:
+            json.dump(curriculum, f, ensure_ascii=False, indent=4)
+        raise e
+
+
+if __name__ == "__main__":
+    main()
