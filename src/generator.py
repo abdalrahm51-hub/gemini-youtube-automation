@@ -1,11 +1,10 @@
 # FILE: src/generator.py
-# FINAL, COMPLETE & CLEAN VERSION: Compatible with per-slide audio sync, dynamic slides, and GitHub Actions.
+# FINAL, COMPLETE & CLEAN VERSION: No external Google library dependencies, bypasses all API 404 errors.
 
 import os
 import json
 import requests
 from io import BytesIO
-from google import genai
 from gtts import gTTS
 from moviepy.editor import AudioFileClip, ImageClip, CompositeAudioClip, concatenate_videoclips, vfx
 from moviepy.config import change_settings
@@ -23,6 +22,49 @@ YOUR_NAME = "Unknown Files"
 # GitHub Actions compatibility for ImageMagick
 if os.name == 'posix':
     change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})
+
+
+def call_gemini_api(prompt):
+    """Calls Gemini API directly via HTTP requests to bypass library version conflicts."""
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        raise ValueError("❌ GOOGLE_API_KEY environment variable is missing!")
+
+    # نستخدم النموذج الأحدث والمجاني المستقر مباشرة عبر رابط جوجل الرسمي والمباشر
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ],
+        "generationConfig": {
+            "responseMimeType": "application/json"
+        }
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+        
+        # استخراج النص الراجع من استجابة جوجل
+        text_content = result['candidates'][0]['content']['parts'][0]['text']
+        return text_content
+    except Exception as e:
+        print(f"❌ Gemini API HTTP Request Failed: {e}")
+        # محاولة بديلة سريعة باستخدام إصدار v1 إذا فشل v1beta
+        try:
+            url_fallback = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key={api_key}"
+            response = requests.post(url_fallback, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            result = response.json()
+            return result['candidates'][0]['content']['parts'][0]['text']
+        except Exception as fallback_error:
+            raise RuntimeError(f"❌ Direct API connection totally failed: {fallback_error}")
 
 
 def get_pexels_image(query, video_type):
@@ -58,8 +100,6 @@ def generate_curriculum(previous_titles=None):
     """Generates the entire course curriculum using Gemini."""
     print("🤖 Generating a new curriculum for 'Unknown Files'...")
     try:
-        client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
-
         history = ""
         if previous_titles:
             formatted = "\n".join([f"{i+1}. {t}" for i, t in enumerate(previous_titles)])
@@ -71,9 +111,8 @@ def generate_curriculum(previous_titles=None):
         Respond with ONLY a valid JSON object. The object must contain a key "lessons" which is a list of 10 lesson objects.
         Each lesson object must have these keys: "chapter", "part", "title", "status" (defaulted to "pending"), and "youtube_id" (defaulted to null).
         """
-        # تعديل النموذج هنا إلى الإصدار الأكثر توافقاً مع واجهات v1beta المجانية
-        response = client.models.generate_content(model='gemini-1.5-flash-8b', contents=prompt)
-        json_string = response.text.strip().replace("```json", "").replace("```", "")
+        response_text = call_gemini_api(prompt)
+        json_string = response_text.strip().replace("```json", "").replace("```", "")
         curriculum = json.loads(json_string)
         print("✅ New curriculum generated successfully!")
         return curriculum
@@ -86,7 +125,6 @@ def generate_lesson_content(lesson_title):
     """Generates the content for one mystery story."""
     print(f"🤖 Generating content for: '{lesson_title}'...")
     try:
-        client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
         prompt = f"""
         Create a mysterious story script in Arabic about '{lesson_title}'. 
         The tone should be shocking and cinematic.
@@ -98,9 +136,8 @@ def generate_lesson_content(lesson_title):
 
         Return ONLY valid JSON.
         """
-        # تعديل النموذج هنا إلى الإصدار الأكثر توافقاً مع واجهات v1beta المجانية
-        response = client.models.generate_content(model='gemini-1.5-flash-8b', contents=prompt)
-        json_string = response.text.strip().replace("```json", "").replace("```", "")
+        response_text = call_gemini_api(prompt)
+        json_string = response_text.strip().replace("```json", "").replace("```", "")
         content = json.loads(json_string)
         print("✅ Lesson content generated successfully.")
         return content
@@ -181,7 +218,7 @@ def create_video(slide_paths, audio_paths, output_path, video_type):
 
 
 # ==========================================
-# --- DO NOT DELETE: main Execution Loop ---
+# --- main Execution Loop ---
 # ==========================================
 def main():
     print("🚀 Starting Autonomous AI Course Generator pipeline...")
@@ -267,4 +304,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
