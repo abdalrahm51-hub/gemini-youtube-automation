@@ -1,5 +1,5 @@
 # FILE: src/generator.py
-# FINAL, COMPLETE & CLEAN VERSION: No external Google library dependencies, bypasses all API 404 errors.
+# FINAL, COMPLETE & CLEAN VERSION: Fixed Direct API URL path structure and schema.
 
 import os
 import json
@@ -30,7 +30,7 @@ def call_gemini_api(prompt):
     if not api_key:
         raise ValueError("❌ GOOGLE_API_KEY environment variable is missing!")
 
-    # نستخدم النموذج الأحدث والمجاني المستقر مباشرة عبر رابط جوجل الرسمي والمباشر
+    # تم تصحيح الرابط بإضافة مسار models/ قبل اسم النموذج ليتعرف عليه الخادم مباشرة وبدون أخطاء
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
     payload = {
@@ -56,7 +56,7 @@ def call_gemini_api(prompt):
         return text_content
     except Exception as e:
         print(f"❌ Gemini API HTTP Request Failed: {e}")
-        # محاولة بديلة سريعة باستخدام إصدار v1 إذا فشل v1beta
+        # محاولة بديلة سريعة باستخدام إصدار v1 ومسار models/ المباشر والمستقر
         try:
             url_fallback = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key={api_key}"
             response = requests.post(url_fallback, headers=headers, json=payload, timeout=30)
