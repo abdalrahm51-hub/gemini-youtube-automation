@@ -1,5 +1,5 @@
 # FILE: src/generator.py
-# FINAL, ROBUST & SANITIZED VERSION: Bypasses all 404, 400 and InvalidSchema errors with a dynamic model fallback chain.
+# FIXED VERSION: Corrected API URL construction and improved error handling
 
 import os
 import json
@@ -42,23 +42,27 @@ def call_gemini_api(prompt):
         }]
     }
 
-    # قائمة النماذج والمسارات المرتبة من الأكثر استقراراً للروابط المباشرة إلى الأحدث
+    # قائمة النماذج والمسارات المرتبة من الأكثر استقراراً
     fallback_configs = [
         {"model": "gemini-1.5-flash", "version": "v1beta"},
         {"model": "gemini-1.5-pro", "version": "v1beta"},
-        {"model": "gemini-2.5-flash", "version": "v1"},
-        {"model": "gemini-2.5-flash", "version": "v1beta"}
+        {"model": "gemini-2.0-flash-exp", "version": "v1beta"},
+        {"model": "gemini-2.0-flash", "version": "v1beta"}
     ]
 
     for config in fallback_configs:
         model = config["model"]
         version = config["version"]
-        url = f"[https://generativelanguage.googleapis.com/](https://generativelanguage.googleapis.com/){version}/models/{model}:generateContent?key={api_key}"
-        url = str(url).strip()
-
+        
+        # ✅ الرابط الصحيح - تم تصحيحه بالكامل
+        base_url = "https://generativelanguage.googleapis.com"
+        url = f"{base_url}/{version}/models/{model}:generateContent?key={api_key}"
+        
         try:
             print(f"📡 Trying API Call: Model={model}, API Version={version}...")
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            print(f"🔗 URL: {url.replace(api_key, '***')}")  # لإخفاء المفتاح في السجلات
+            
+            response = requests.post(url, headers=headers, json=payload, timeout=60)
             
             if response.status_code == 200:
                 result = response.json()
@@ -67,8 +71,18 @@ def call_gemini_api(prompt):
                 return text_content
             else:
                 print(f"⚠️ Failed config {model}/{version} - HTTP Status: {response.status_code}")
-        except Exception as e:
+                if response.status_code == 404:
+                    print(f"   📝 Model {model} might not be available. Trying next...")
+                elif response.status_code == 403:
+                    print(f"   🚫 API key might not have access to {model}. Trying next...")
+                elif response.status_code == 429:
+                    print(f"   ⏳ Rate limit exceeded. Trying next model...")
+        except requests.exceptions.RequestException as e:
             print(f"⚠️ Connection error with {model}/{version}: {e}")
+            continue
+        except Exception as e:
+            print(f"⚠️ Unexpected error with {model}/{version}: {e}")
+            continue
 
     # إذا فشلت جميع المحاولات
     raise RuntimeError("❌ All Gemini API configurations failed. Please check your API key, quotas or network access.")
