@@ -1,5 +1,5 @@
 # FILE: src/generator.py
-# FIXED VERSION: Corrected API URL construction and improved error handling
+# FINAL FIXED VERSION - Using only available models with proper error handling
 
 import os
 import json
@@ -11,6 +11,7 @@ from moviepy.config import change_settings
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from pathlib import Path
 from pydub import AudioSegment
+import time
 
 # --- Configuration ---
 ASSETS_PATH = Path("assets")
@@ -25,42 +26,46 @@ if os.name == 'posix':
 
 
 def call_gemini_api(prompt):
-    """Calls Gemini API directly and safely using a dynamic model fallback chain."""
+    """Calls Gemini API with models that are actually available."""
     raw_api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not raw_api_key:
         raise ValueError("❌ Neither GEMINI_API_KEY nor GOOGLE_API_KEY environment variable is set!")
 
-    # تنظيف مفتاح الـ API تماماً من أي علامات اقتباس أو أقواس مجعدة
+    # تنظيف مفتاح الـ API
     api_key = raw_api_key.strip().strip('{}').strip('"').strip("'")
     headers = {"Content-Type": "application/json"}
     
     payload = {
         "contents": [{
             "parts": [{
-                "text": prompt + "\nRespond with raw JSON only. Do not wrap in markdown tags like ```json."
+                "text": prompt
             }]
         }]
     }
 
-    # قائمة النماذج والمسارات المرتبة من الأكثر استقراراً
+    # ✅ استخدام الموديلات المتاحة والمستقرة فقط
+    # gemini-1.5-flash هو الأكثر استقراراً وتوفراً
     fallback_configs = [
         {"model": "gemini-1.5-flash", "version": "v1beta"},
         {"model": "gemini-1.5-pro", "version": "v1beta"},
-        {"model": "gemini-2.0-flash-exp", "version": "v1beta"},
+        # ملاحظة: موديلات 2.0 تعطي 404 أو 429، لذا نستخدمها كحل أخير
+        {"model": "gemini-2.0-flash", "version": "v1"},
         {"model": "gemini-2.0-flash", "version": "v1beta"}
     ]
 
-    for config in fallback_configs:
+    last_error = None
+    
+    for i, config in enumerate(fallback_configs):
         model = config["model"]
         version = config["version"]
         
-        # ✅ الرابط الصحيح - تم تصحيحه بالكامل
+        # ✅ الرابط الصحيح
         base_url = "https://generativelanguage.googleapis.com"
         url = f"{base_url}/{version}/models/{model}:generateContent?key={api_key}"
         
         try:
-            print(f"📡 Trying API Call: Model={model}, API Version={version}...")
-            print(f"🔗 URL: {url.replace(api_key, '***')}")  # لإخفاء المفتاح في السجلات
+            print(f"📡 Trying API Call {i+1}/{len(fallback_configs)}: Model={model}, API Version={version}...")
+            print(f"🔗 URL: {url.replace(api_key, '***')}")
             
             response = requests.post(url, headers=headers, json=payload, timeout=60)
             
@@ -69,23 +74,38 @@ def call_gemini_api(prompt):
                 text_content = result['candidates'][0]['content']['parts'][0]['text']
                 print(f"✅ Success with Model {model} on {version}!")
                 return text_content
+            elif response.status_code == 404:
+                print(f"⚠️ Model {model} not found (404). Trying next...")
+                last_error = f"Model {model} not available"
+            elif response.status_code == 429:
+                print(f"⏳ Rate limit exceeded (429). Waiting 10 seconds before retry...")
+                time.sleep(10)  # انتظار قبل المحاولة التالية
+                last_error = "Rate limit exceeded"
+            elif response.status_code == 403:
+                print(f"🚫 API key doesn't have access to {model} (403). Trying next...")
+                last_error = "Access forbidden"
             else:
-                print(f"⚠️ Failed config {model}/{version} - HTTP Status: {response.status_code}")
-                if response.status_code == 404:
-                    print(f"   📝 Model {model} might not be available. Trying next...")
-                elif response.status_code == 403:
-                    print(f"   🚫 API key might not have access to {model}. Trying next...")
-                elif response.status_code == 429:
-                    print(f"   ⏳ Rate limit exceeded. Trying next model...")
-        except requests.exceptions.RequestException as e:
-            print(f"⚠️ Connection error with {model}/{version}: {e}")
-            continue
+                print(f"⚠️ Failed with status {response.status_code}: {response.text[:100]}")
+                last_error = f"HTTP {response.status_code}"
+                
+        except requests.exceptions.Timeout:
+            print(f"⏰ Timeout with {model}. Trying next...")
+            last_error = "Timeout"
+        except requests.exceptions.ConnectionError:
+            print(f"🔌 Connection error with {model}. Trying next...")
+            last_error = "Connection error"
         except Exception as e:
             print(f"⚠️ Unexpected error with {model}/{version}: {e}")
+            last_error = str(e)
             continue
+        
+        # انتظار قصير بين المحاولات لتجنب تجاوز الحد
+        if i < len(fallback_configs) - 1:
+            time.sleep(2)
 
     # إذا فشلت جميع المحاولات
-    raise RuntimeError("❌ All Gemini API configurations failed. Please check your API key, quotas or network access.")
+    error_msg = f"❌ All Gemini API configurations failed. Last error: {last_error}"
+    raise RuntimeError(error_msg)
 
 
 def get_pexels_image(query, video_type):
@@ -132,7 +152,12 @@ def generate_curriculum(previous_titles=None):
         Each lesson object must have these keys: "chapter", "part", "title", "status" (defaulted to "pending"), and "youtube_id" (defaulted to null).
         """
         response_text = call_gemini_api(prompt)
-        json_string = response_text.strip().replace("```json", "").replace("```", "")
+        # تنظيف النص من علامات markdown إذا وجدت
+        json_string = response_text.strip()
+        if json_string.startswith("```json"):
+            json_string = json_string[7:]
+        if json_string.endswith("```"):
+            json_string = json_string[:-3]
         curriculum = json.loads(json_string)
         print("✅ New curriculum generated successfully!")
         return curriculum
@@ -157,7 +182,11 @@ def generate_lesson_content(lesson_title):
         Return ONLY valid JSON.
         """
         response_text = call_gemini_api(prompt)
-        json_string = response_text.strip().replace("```json", "").replace("```", "")
+        json_string = response_text.strip()
+        if json_string.startswith("```json"):
+            json_string = json_string[7:]
+        if json_string.endswith("```"):
+            json_string = json_string[:-3]
         content = json.loads(json_string)
         print("✅ Lesson content generated successfully.")
         return content
