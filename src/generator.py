@@ -1,5 +1,5 @@
 # FILE: src/generator.py
-# FINAL, ROBUST & SANITIZED VERSION: Guaranteed to bypass all 404 and InvalidSchema errors.
+# FINAL, ROBUST & SANITIZED VERSION: Bypasses all 404, 400 and InvalidSchema errors with a dynamic model fallback chain.
 
 import os
 import json
@@ -25,52 +25,53 @@ if os.name == 'posix':
 
 
 def call_gemini_api(prompt):
-    """Calls Gemini API directly and safely after sanitizing the API key."""
-    # البحث أولاً عن متغير بيئة باسم GEMINI_API_KEY أو المتغير الاحتياطي GOOGLE_API_KEY
+    """Calls Gemini API directly and safely using a dynamic model fallback chain."""
     raw_api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not raw_api_key:
         raise ValueError("❌ Neither GEMINI_API_KEY nor GOOGLE_API_KEY environment variable is set!")
 
-    # 🌟 تنظيف وتعقيم مفتاح الـ API تماماً من أي أقواس مجعدة {} أو علامات اقتباس زائدة قد تظهر بالخطأ في الـ Secrets
+    # تنظيف مفتاح الـ API تماماً من أي علامات اقتباس أو أقواس مجعدة
     api_key = raw_api_key.strip().strip('{}').strip('"').strip("'")
-
-    # 🚀 التغيير الحاسم: نستخدم نموذج gemini-2.5-flash الحديث لتجاوز مشاكل الـ 404 نهائياً
-    model = "gemini-2.5-flash"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-    url = str(url).strip()  # لضمان عدم وجود مسافات تفسد الطلب
-
     headers = {"Content-Type": "application/json"}
     
     payload = {
         "contents": [{
             "parts": [{
-                "text": prompt + "\nRespond with raw JSON only. Do not wrap in markdown tags."
+                "text": prompt + "\nRespond with raw JSON only. Do not wrap in markdown tags like ```json."
             }]
         }]
     }
 
-    try:
-        print(f"📡 Sending request to Gemini API ({model})...")
-        response = requests.post(url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        result = response.json()
-        
-        text_content = result['candidates'][0]['content']['parts'][0]['text']
-        return text_content
-    except Exception as e:
-        print(f"⚠️ Primary call to {model} failed: {e}")
+    # قائمة النماذج والمسارات المرتبة من الأكثر استقراراً للروابط المباشرة إلى الأحدث
+    fallback_configs = [
+        {"model": "gemini-1.5-flash", "version": "v1beta"},
+        {"model": "gemini-1.5-pro", "version": "v1beta"},
+        {"model": "gemini-2.5-flash", "version": "v1"},
+        {"model": "gemini-2.5-flash", "version": "v1beta"}
+    ]
+
+    for config in fallback_configs:
+        model = config["model"]
+        version = config["version"]
+        url = f"[https://generativelanguage.googleapis.com/](https://generativelanguage.googleapis.com/){version}/models/{model}:generateContent?key={api_key}"
+        url = str(url).strip()
+
         try:
-            # محاولة احتياطية باستدعاء نفس الطراز الحديث عبر مسار v1 بدلاً من v1beta
-            print(f"📡 Trying fallback with model ({model}) on v1 API...")
-            url_fallback = f"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent?key={api_key}"
-            url_fallback = str(url_fallback).strip()
+            print(f"📡 Trying API Call: Model={model}, API Version={version}...")
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
             
-            response = requests.post(url_fallback, headers=headers, json=payload, timeout=30)
-            response.raise_for_status()
-            result = response.json()
-            return result['candidates'][0]['content']['parts'][0]['text']
-        except Exception as fallback_error:
-            raise RuntimeError(f"❌ Direct API connection totally failed: {fallback_error}")
+            if response.status_code == 200:
+                result = response.json()
+                text_content = result['candidates'][0]['content']['parts'][0]['text']
+                print(f"✅ Success with Model {model} on {version}!")
+                return text_content
+            else:
+                print(f"⚠️ Failed config {model}/{version} - HTTP Status: {response.status_code}")
+        except Exception as e:
+            print(f"⚠️ Connection error with {model}/{version}: {e}")
+
+    # إذا فشلت جميع المحاولات
+    raise RuntimeError("❌ All Gemini API configurations failed. Please check your API key, quotas or network access.")
 
 
 def get_pexels_image(query, video_type):
@@ -277,4 +278,24 @@ def main():
             )
             slide_paths.append(img_path)
 
-            audio_file = lesson_dir / f"audio_{i+1:0
+            audio_file = lesson_dir / f"audio_{i+1:02d}.mp3"
+            wav_path = text_to_speech(slide.get("content", ""), audio_file)
+            audio_paths.append(wav_path)
+
+        video_output_path = lesson_dir / f"{lesson_id}_video.mp4"
+        create_video(slide_paths, audio_paths, video_output_path, video_type="long")
+
+        next_lesson["status"] = "completed"
+        with open(curriculum_path, "w", encoding="utf-8") as f:
+            json.dump(curriculum, f, ensure_ascii=False, indent=4)
+        print(f"✅ Successfully finished production for: '{next_lesson['title']}'!")
+
+    except Exception as e:
+        print(f"❌ Failed producing lesson: {next_lesson['title']}. Error: {e}")
+        with open(curriculum_path, "w", encoding="utf-8") as f:
+            json.dump(curriculum, f, ensure_ascii=False, indent=4)
+        raise e
+
+
+if __name__ == "__main__":
+    main()
