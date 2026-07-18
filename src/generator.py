@@ -19,161 +19,84 @@ YOUR_NAME = "Unknown Files"
 if os.name == 'posix':
     change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})
 
-
-def call_gemini_api(prompt):
-    """اتصال مستقر وسريع عبر OpenRouter لتوليد النصوص بجودة عالية وبدون انقطاع"""
-    raw_api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    if not raw_api_key:
-        raise ValueError("❌ لم يتم العثور على مفتاح API في إعدادات جيت هاب!")
-
-    api_key = raw_api_key.strip().strip('{}').strip('"').strip("'")
-
+def call_llm_api(prompt):
+    """دالة تتصل بـ OpenRouter باستخدام مفتاحك الجديد"""
+    api_key = os.environ.get("GOOGLE_API_KEY") # تأكد أن المفتاح sk-or-v1 موجود هنا
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
-    
     payload = {
-        "model": "meta-llama/llama-3-8b-instruct:free",
-        "messages": [
-            {
-                "role": "user",
-                "content": prompt + "\nRespond with raw JSON only. Do not wrap in markdown tags."
-            }
-        ]
+        "model": "google/gemini-flash-1.5", # أو أي موديل آخر تدعمه المنصة
+        "messages": [{"role": "user", "content": prompt}]
     }
-
-    try:
-        print("Base Pipeline: Sending request to OpenRouter backend...")
-        response = requests.post(url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        result = response.json()
-        return result['choices'][0]['message']['content']
-    except Exception as e:
-        raise RuntimeError(f"❌ Direct API connection totally failed: {e}")
-
+    response = requests.post(url, headers=headers, json=payload)
+    if response.status_code == 200:
+        return response.json()['choices'][0]['message']['content']
+    else:
+        raise Exception(f"API Error: {response.status_code} - {response.text}")
 
 def get_pexels_image(query, video_type):
-    print("🎨 Using fast background generation to avoid system hanging.")
+    pexels_api_key = os.getenv("PEXELS_API_KEY")
+    if not pexels_api_key: return None
+    orientation = 'landscape' if video_type == 'long' else 'portrait'
+    try:
+        headers = {"Authorization": pexels_api_key}
+        params = {"query": f"mysterious {query}", "per_page": 1, "orientation": orientation}
+        response = requests.get("https://api.pexels.com/v1/search", headers=headers, params=params)
+        data = response.json()
+        if data.get('photos'):
+            img_res = requests.get(data['photos'][0]['src']['large2x'])
+            return Image.open(BytesIO(img_res.content)).convert("RGBA")
+    except: pass
     return None
 
-
 def text_to_speech(text, output_path):
-    print(f"🎤 Converting script to speech (Arabic)...")
-    try:
-        temp_mp3_path = str(output_path).replace('.mp3', '_temp.mp3')
-        wav_path = str(output_path.with_suffix('.wav'))
-
-        tts = gTTS(text=text, lang='ar', slow=False)
-        tts.save(temp_mp3_path)
-
-        audio = AudioSegment.from_mp3(temp_mp3_path)
-        audio.export(wav_path, format="wav", codec="pcm_s16le")
-        os.remove(temp_mp3_path)
-        return Path(wav_path)
-    except Exception as e:
-        print(f"❌ ERROR: Failed to generate speech: {e}")
-        raise
-
+    temp_mp3 = str(output_path).replace('.mp3', '_temp.mp3')
+    wav_path = str(output_path.with_suffix('.wav'))
+    tts = gTTS(text=text, lang='ar', slow=False)
+    tts.save(temp_mp3)
+    AudioSegment.from_mp3(temp_mp3).export(wav_path, format="wav")
+    os.remove(temp_mp3)
+    return Path(wav_path)
 
 def generate_curriculum(previous_titles=None):
-    print("🤖 Generating a new curriculum for 'Unknown Files'...")
-    try:
-        history = ""
-        if previous_titles:
-            formatted = "\n".join([f"{i+1}. {t}" for i, t in enumerate(previous_titles)])
-            history = f"The following stories have already been created:\n{formatted}\n\nPlease continue from where this series left off.\n"
-
-        prompt = f"""
-        You are a mystery and true crime storyteller. Generate a list of 10 mysterious and shocking stories for a YouTube channel called 'Unknown Files'.
-        {history}
-        Respond with ONLY a valid JSON object. The object must contain a key "lessons" which is a list of 10 lesson objects.
-        Each lesson object must have these keys: "chapter", "part", "title", "status" (defaulted to "pending"), and "youtube_id" (defaulted to null).
-        """
-        response_text = call_gemini_api(prompt)
-        json_string = response_text.strip().replace("```json", "").replace("```", "")
-        return json.loads(json_string)
-    except Exception as e:
-        print(f"❌ CRITICAL ERROR: Failed to generate curriculum. {e}")
-        raise
-
+    prompt = "Generate a JSON with a list of 10 mystery story titles for 'Unknown Files' channel. Respond ONLY with JSON format: {\"lessons\": [{\"chapter\": 1, \"part\": 1, \"title\": \"Title\", \"status\": \"pending\", \"youtube_id\": null}]}"
+    text = call_llm_api(prompt)
+    # تنظيف النص من علامات Markdown إذا وجدت
+    clean_text = text.strip().replace("```json", "").replace("```", "")
+    return json.loads(clean_text)
 
 def generate_lesson_content(lesson_title):
-    print(f"🤖 Generating content for: '{lesson_title}'...")
-    try:
-        prompt = f"""
-        Create a mysterious story script in Arabic about '{lesson_title}'. 
-        The tone should be shocking and cinematic.
-
-        Generate a JSON response with three keys:
-        1. "long_form_slides": A list of 7 to 8 slide objects. Each object needs a "title" and "content" key (both in Arabic).
-        2. "short_form_highlight": A single, punchy summary for a Short (in Arabic).
-        3. "hashtags": A string of 5-7 relevant hashtags (e.g., "#غموض #جرائم #قصص_واقعية").
-
-        Return ONLY valid JSON.
-        """
-        response_text = call_gemini_api(prompt)
-        json_string = response_text.strip().replace("```json", "").replace("```", "")
-        return json.loads(json_string)
-    except Exception as e:
-        print(f"❌ ERROR: Failed to generate lesson content: {e}")
-        raise
-
+    prompt = f"Create a mystery story in Arabic about '{lesson_title}'. Return JSON with 'long_form_slides' (list of 7 title/content pairs), 'short_form_highlight', and 'hashtags'. Respond ONLY with JSON."
+    text = call_llm_api(prompt)
+    clean_text = text.strip().replace("```json", "").replace("```", "")
+    return json.loads(clean_text)
 
 def generate_visuals(output_dir, video_type, slide_content=None, thumbnail_title=None, slide_number=0, total_slides=0):
     output_dir.mkdir(exist_ok=True, parents=True)
-    is_thumbnail = thumbnail_title is not None
-
+    is_thumb = thumbnail_title is not None
     width, height = (1920, 1080) if video_type == 'long' else (1080, 1920)
-    title = thumbnail_title if is_thumbnail else slide_content.get("title", "")
-    
-    bg_image = Image.new('RGBA', (width, height), color=(12, 17, 29))
-    darken_layer = Image.new('RGBA', bg_image.size, (0, 0, 0, 150))
-    final_bg = Image.alpha_composite(bg_image, darken_layer).convert("RGB")
-    
-    draw = ImageDraw.Draw(final_bg)
-    try:
-        title_font = ImageFont.truetype(str(FONT_FILE), 80 if video_type == 'long' else 90)
-    except IOError:
-        title_font = FALLBACK_THUMBNAIL_FONT
-
-    draw.text((width//10, height//2), title[:40], fill=(255, 255, 255))
-    
-    file_prefix = "thumbnail" if is_thumbnail else f"slide_{slide_number:02d}"
-    path = output_dir / f"{file_prefix}.png"
-    final_bg.save(path)
+    title = thumbnail_title if is_thumb else slide_content.get("title", "")
+    bg = get_pexels_image(title, video_type) or Image.new('RGBA', (width, height), (15, 15, 15))
+    bg = bg.resize((width, height)).filter(ImageFilter.GaussianBlur(5))
+    final = Image.alpha_composite(bg.convert("RGBA"), Image.new('RGBA', bg.size, (0, 0, 0, 180))).convert("RGB")
+    draw = ImageDraw.Draw(final)
+    draw.text((width//10, height//2), title[:40], fill=(255, 255, 255), font=FALLBACK_THUMBNAIL_FONT)
+    path = output_dir / f"{'thumbnail' if is_thumb else f'slide_{slide_number:02d}'}.png"
+    final.save(path)
     return str(path)
 
-
 def create_video(slide_paths, audio_paths, output_path, video_type):
-    print(f"🎬 Creating {video_type} video...")
-    try:
-        image_clips = []
-        for img_path, audio_path in zip(slide_paths, audio_paths):
-            audio_clip = AudioFileClip(str(audio_path))
-            duration = audio_clip.duration + 0.5
-            img_clip = (
-                ImageClip(img_path)
-                .set_duration(duration)
-                .set_audio(audio_clip)
-                .fadein(0.5)
-                .fadeout(0.5)
-            )
-            image_clips.append(img_clip)
+    clips = []
+    for img, aud in zip(slide_paths, audio_paths):
+        a_clip = AudioFileClip(str(aud))
+        i_clip = ImageClip(img).set_duration(a_clip.duration + 0.5).set_audio(a_clip)
+        clips.append(i_clip)
+    final = concatenate_videoclips(clips, method="compose")
+    if BACKGROUND_MUSIC_PATH.exists():
+        bg = AudioFileClip(str(BACKGROUND_MUSIC_PATH)).volumex(0.05).fx(vfx.loop, duration=final.duration)
+        final = final.set_audio(CompositeAudioClip([final.audio, bg]))
+    final.write_videofile(str(output_path), fps=24, codec="libx264", audio_codec="aac")
 
-        final_video = concatenate_videoclips(image_clips, method="compose")
-
-        if BACKGROUND_MUSIC_PATH.exists():
-            bg_music = AudioFileClip(str(BACKGROUND_MUSIC_PATH)).volumex(0.05)
-            if bg_music.duration < final_video.duration:
-                bg_music = bg_music.fx(vfx.loop, duration=final_video.duration)
-            else:
-                bg_music = bg_music.subclip(0, final_video.duration)
-            final_video = final_video.set_audio(CompositeAudioClip([final_video.audio.volumex(1.2), bg_music]))
-
-        final_video.write_videofile(str(output_path), fps=24, codec="libx264", audio_codec="aac", preset='ultrafast')
-        print(f"✅ Video created successfully!")
-    except Exception as e:
-        print(f"❌ ERROR during video creation: {e}")
-        raise
